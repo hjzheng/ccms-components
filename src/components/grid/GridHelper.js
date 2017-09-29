@@ -25,7 +25,6 @@ function transformer(response, mapping) {
  * 表格服务,对外提供刷新服务
  */
 export default {
-
 	fillOpts(gridOptions) {
 
 		let DEFAULT_CONFIGS = {
@@ -58,9 +57,12 @@ export default {
 
 		this.fillOpts(gridOptions);
 		gridOptions.loading = true;
+		gridOptions.errorMessage = '';
 
 		// 如果不存在外部表格数据则请求接口拿数据
 		if (!gridOptions.externalData && gridOptions.resource) {
+
+			gridOptions.lastRequest && gridOptions.lastRequest.$cancelRequest && gridOptions.lastRequest.$cancelRequest();
 
 			const pageParams = {
 				pageNum: gridOptions.pager.pageNum,
@@ -69,7 +71,9 @@ export default {
 
 			const params = filter(Object.assign({}, pageParams, gridOptions.queryParams, queryParams), value => !!value);
 
-			return gridOptions.resource.get(params).$promise
+			gridOptions.lastRequest = gridOptions.resource.get(params);
+
+			return gridOptions.lastRequest.$promise
 
 				.then(res => {
 
@@ -97,6 +101,10 @@ export default {
 					pager.totalPages = Math.ceil((transformedData.totals || 0) / pager.pageSize);
 
 					return gridOptions;
+				})
+				.catch(res => {
+					gridOptions.errorMessage = `${res.status} ${res.statusText}`;
+					gridOptions.loading = false;
 				});
 
 		} else {
